@@ -1,3 +1,6 @@
+import aiohttp
+import asyncio
+import uvicorn
 import os
 import secrets
 import torch
@@ -11,6 +14,12 @@ from classifier.forms import ImageUploadForm
 from classifier.models import User
 from flask_login import login_user, current_user, logout_user, login_required
 
+export_file_url = 'https://www.googleapis.com/drive/v3/files/1-B_IRObgJROvPR1wQ7RYrnwV4CXXE_Gu?alt=media&key=AIzaSyAjfbYsEA6D1_O4POidib22spKPwh_t_hk'
+export_file_name = 'export.pkl'
+
+classes = ['신봉선', '아이유', '한지민']
+path=Path('classifier/data')
+# path = Path(__file__).parent
 
 def save_picture(form_picture):
     random_hex = secrets.token_hex(8)
@@ -70,19 +79,25 @@ def upload():
 #     AIanswer= User.pred_class
 #     return render_template('upload.html', image_file=image_file, answer = AIanswer, form=form)
 
-def classifier(picture_file):
+async def download_file(url, dest):
+    if dest.exists(): return
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            data = await response.read()
+            with open(dest, 'wb') as f:
+                f.write(data)
+
+
+async def classifier(picture_file):
+    await download_file(export_file_url, path / export_file_name)
+
     picture_path = os.path.join(app.root_path, 'static/pics', picture_file)
-    path=Path('classifier/data')
-    learn = load_learner(path)
+    # path=Path('classifier/data')
+    learn = load_learner(path, export_file_name)
     img = open_image(picture_path)
-    pred_class,pred_idx,outputs = learn.predict(img)
+    pred_class = learn.predict(img)[0]
 
     return pred_class
-
-
-
-
-
 
 
 # def classify():
